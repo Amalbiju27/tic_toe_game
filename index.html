@@ -7,21 +7,37 @@
   <title>Tic Tac Toe</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="index.css" />
 </head>
 <body>
+
+  <!-- Ambient background shapes -->
+  <div class="ambient" aria-hidden="true">
+    <div class="ambient-orb orb-1"></div>
+    <div class="ambient-orb orb-2"></div>
+    <div class="ambient-orb orb-3"></div>
+  </div>
+
+  <!-- Win celebration particles (injected by JS) -->
+  <div class="confetti-container" id="confetti-container" aria-hidden="true"></div>
 
   <!-- ==================== MODE SELECTION SCREEN ==================== -->
   <div class="mode-screen" id="mode-screen">
     <div class="mode-card">
       <div class="mode-header">
+        <div class="logo-icon">
+          <span class="logo-x">X</span>
+          <span class="logo-o">O</span>
+        </div>
         <h1 class="logo">tic tac toe</h1>
+        <p class="tagline">classic strategy game</p>
       </div>
 
       <div class="mode-section">
         <p class="section-label">Game Mode</p>
         <div class="mode-toggle" id="mode-toggle">
+          <div class="toggle-slider" id="toggle-slider"></div>
           <button class="toggle-btn active" id="btn-mode-pvp" data-mode="pvp">2 Players</button>
           <button class="toggle-btn" id="btn-mode-ai" data-mode="ai">vs Computer</button>
         </div>
@@ -30,13 +46,25 @@
       <div class="mode-section hidden" id="difficulty-section">
         <p class="section-label">Difficulty</p>
         <div class="diff-group">
-          <button class="diff-btn active" id="diff-easy" data-diff="easy">Easy</button>
-          <button class="diff-btn" id="diff-medium" data-diff="medium">Medium</button>
-          <button class="diff-btn" id="diff-hard" data-diff="hard">Hard</button>
+          <button class="diff-btn active" id="diff-easy" data-diff="easy">
+            <span class="diff-dot dot-green"></span>
+            Easy
+          </button>
+          <button class="diff-btn" id="diff-medium" data-diff="medium">
+            <span class="diff-dot dot-amber"></span>
+            Medium
+          </button>
+          <button class="diff-btn" id="diff-hard" data-diff="hard">
+            <span class="diff-dot dot-red"></span>
+            Hard
+          </button>
         </div>
       </div>
 
-      <button class="btn-start" id="btn-start-game">Start</button>
+      <button class="btn-start" id="btn-start-game">
+        Start Game
+        <span class="btn-arrow">&#8594;</span>
+      </button>
     </div>
   </div>
 
@@ -45,22 +73,31 @@
 
     <header class="game-header">
       <h1 class="logo logo--small">tic tac toe</h1>
-      <span class="mode-tag" id="mode-tag">2 Players</span>
+      <div class="header-right">
+        <span class="round-badge" id="round-badge">Round 1</span>
+        <span class="mode-tag" id="mode-tag">2 Players</span>
+      </div>
     </header>
 
     <!-- Score Panel -->
     <section class="scoreboard" aria-label="Scoreboard">
       <div class="score-card score-x" id="score-card-x">
         <span class="score-label" id="label-x">X</span>
-        <span class="score-value" id="score-x">0</span>
+        <div class="score-num-wrap">
+          <span class="score-value" id="score-x">0</span>
+        </div>
       </div>
       <div class="score-card score-draw">
         <span class="score-label">Draw</span>
-        <span class="score-value" id="score-draw">0</span>
+        <div class="score-num-wrap">
+          <span class="score-value" id="score-draw">0</span>
+        </div>
       </div>
       <div class="score-card score-o" id="score-card-o">
         <span class="score-label" id="label-o">O</span>
-        <span class="score-value" id="score-o">0</span>
+        <div class="score-num-wrap">
+          <span class="score-value" id="score-o">0</span>
+        </div>
       </div>
     </section>
 
@@ -68,20 +105,21 @@
     <div class="turn-indicator" id="turn-indicator">
       <span class="turn-mark" id="turn-symbol"></span>
       <span class="turn-text" id="turn-text"></span>
+      <span class="move-count" id="move-count">Move 1</span>
     </div>
 
     <!-- Game Board -->
     <section class="board-wrapper">
       <div class="board" id="game-board" role="grid" aria-label="Tic Tac Toe board">
-        <button class="cell" id="cell-0" data-index="0" aria-label="Cell 1"></button>
-        <button class="cell" id="cell-1" data-index="1" aria-label="Cell 2"></button>
-        <button class="cell" id="cell-2" data-index="2" aria-label="Cell 3"></button>
-        <button class="cell" id="cell-3" data-index="3" aria-label="Cell 4"></button>
-        <button class="cell" id="cell-4" data-index="4" aria-label="Cell 5"></button>
-        <button class="cell" id="cell-5" data-index="5" aria-label="Cell 6"></button>
-        <button class="cell" id="cell-6" data-index="6" aria-label="Cell 7"></button>
-        <button class="cell" id="cell-7" data-index="7" aria-label="Cell 8"></button>
-        <button class="cell" id="cell-8" data-index="8" aria-label="Cell 9"></button>
+        <button class="cell" id="cell-0" data-index="0" aria-label="Cell 1"><span class="cell-content"></span></button>
+        <button class="cell" id="cell-1" data-index="1" aria-label="Cell 2"><span class="cell-content"></span></button>
+        <button class="cell" id="cell-2" data-index="2" aria-label="Cell 3"><span class="cell-content"></span></button>
+        <button class="cell" id="cell-3" data-index="3" aria-label="Cell 4"><span class="cell-content"></span></button>
+        <button class="cell" id="cell-4" data-index="4" aria-label="Cell 5"><span class="cell-content"></span></button>
+        <button class="cell" id="cell-5" data-index="5" aria-label="Cell 6"><span class="cell-content"></span></button>
+        <button class="cell" id="cell-6" data-index="6" aria-label="Cell 7"><span class="cell-content"></span></button>
+        <button class="cell" id="cell-7" data-index="7" aria-label="Cell 8"><span class="cell-content"></span></button>
+        <button class="cell" id="cell-8" data-index="8" aria-label="Cell 9"><span class="cell-content"></span></button>
       </div>
       <svg class="win-line-svg" id="win-line-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
         <line id="win-line" x1="0" y1="0" x2="0" y2="0" />
@@ -91,9 +129,26 @@
     <!-- Result Overlay -->
     <div class="result-overlay" id="result-overlay">
       <div class="result-card">
+        <div class="result-icon" id="result-icon">
+          <span class="result-mark" id="result-mark">X</span>
+        </div>
         <h2 class="result-title" id="result-title">X wins</h2>
         <p class="result-sub" id="result-sub"></p>
-        <button class="btn-start" id="btn-play-again">Play again</button>
+        <div class="result-stats" id="result-stats">
+          <div class="stat">
+            <span class="stat-val" id="stat-moves">0</span>
+            <span class="stat-label">Moves</span>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="stat">
+            <span class="stat-val" id="stat-round">0</span>
+            <span class="stat-label">Round</span>
+          </div>
+        </div>
+        <button class="btn-start btn-start--small" id="btn-play-again">
+          Play again
+          <span class="btn-arrow">&#8594;</span>
+        </button>
       </div>
     </div>
 
@@ -103,6 +158,10 @@
       <button class="ctrl-btn" id="btn-reset-scores">Clear scores</button>
       <button class="ctrl-btn" id="btn-change-mode">Change mode</button>
     </div>
+
+    <footer class="game-footer">
+      Built with logic from Python &middot; Minimax AI
+    </footer>
   </main>
 
   <script src="game.js"></script>

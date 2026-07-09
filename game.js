@@ -1,13 +1,8 @@
 /* ===================================================================
-   Tic Tac Toe — Game Logic + AI Engine
+   Tic Tac Toe — Game Logic + AI Engine + Animations
    
    Evaluation logic ported from the Python notebook (evaluate function)
-   that checks rows, columns, and diagonals for X / O victory.
-   
-   AI Difficulty:
-     Easy   — random moves
-     Medium — 40% minimax, 60% random
-     Hard   — full minimax (unbeatable)
+   AI: Easy (random), Medium (40% minimax), Hard (full minimax)
    =================================================================== */
 
 (() => {
@@ -28,6 +23,9 @@
   let currentTurn = X;
   let gameOver    = false;
   let aiThinking  = false;
+  let moveNumber  = 0;
+  let roundNumber = 1;
+  let lastMoveIdx = -1;
   let scores      = { x: 0, o: 0, draw: 0 };
 
   const WIN_LINE_COORDS = {
@@ -42,13 +40,14 @@
   };
 
   // ── DOM — Mode Screen ─────────────────────────────────────────────
-  const modeScreen   = document.getElementById('mode-screen');
-  const gameScreen   = document.getElementById('game-screen');
-  const btnModePvp   = document.getElementById('btn-mode-pvp');
-  const btnModeAi    = document.getElementById('btn-mode-ai');
-  const diffSection  = document.getElementById('difficulty-section');
-  const diffBtns     = document.querySelectorAll('.diff-btn');
-  const btnStartGame = document.getElementById('btn-start-game');
+  const modeScreen    = document.getElementById('mode-screen');
+  const gameScreen    = document.getElementById('game-screen');
+  const btnModePvp    = document.getElementById('btn-mode-pvp');
+  const btnModeAi     = document.getElementById('btn-mode-ai');
+  const toggleSlider  = document.getElementById('toggle-slider');
+  const diffSection   = document.getElementById('difficulty-section');
+  const diffBtns      = document.querySelectorAll('.diff-btn');
+  const btnStartGame  = document.getElementById('btn-start-game');
 
   // ── DOM — Game Screen ─────────────────────────────────────────────
   const cells          = document.querySelectorAll('.cell');
@@ -56,6 +55,7 @@
   const turnIndicator  = document.getElementById('turn-indicator');
   const turnSymbol     = document.getElementById('turn-symbol');
   const turnText       = document.getElementById('turn-text');
+  const moveCountEl    = document.getElementById('move-count');
   const scoreXEl       = document.getElementById('score-x');
   const scoreOEl       = document.getElementById('score-o');
   const scoreDrawEl    = document.getElementById('score-draw');
@@ -64,15 +64,50 @@
   const labelX         = document.getElementById('label-x');
   const labelO         = document.getElementById('label-o');
   const modeTag        = document.getElementById('mode-tag');
+  const roundBadge     = document.getElementById('round-badge');
   const resultOverlay  = document.getElementById('result-overlay');
   const resultTitle    = document.getElementById('result-title');
   const resultSub      = document.getElementById('result-sub');
+  const resultIcon     = document.getElementById('result-icon');
+  const resultMark     = document.getElementById('result-mark');
+  const statMoves      = document.getElementById('stat-moves');
+  const statRound      = document.getElementById('stat-round');
   const btnPlayAgain   = document.getElementById('btn-play-again');
   const btnReset       = document.getElementById('btn-reset');
   const btnResetScores = document.getElementById('btn-reset-scores');
   const btnChangeMode  = document.getElementById('btn-change-mode');
   const winLineSvg     = document.getElementById('win-line-svg');
   const winLine        = document.getElementById('win-line');
+  const confettiBox    = document.getElementById('confetti-container');
+
+  // ══════════════════════════════════════════════════════════════════
+  //  CONFETTI
+  // ══════════════════════════════════════════════════════════════════
+
+  function spawnConfetti(color) {
+    confettiBox.innerHTML = '';
+    const colors = color === 'cyan'
+      ? ['#3dd6d0', '#9c7cf4', '#6ee7e7', '#b794f6']
+      : color === 'rose'
+      ? ['#f06292', '#f48fb1', '#9c7cf4', '#f8bbd0']
+      : ['#f0b957', '#ffd54f', '#ffe082', '#9c7cf4'];
+
+    for (let i = 0; i < 40; i++) {
+      const piece = document.createElement('div');
+      piece.className = 'confetti-piece';
+      piece.style.left = Math.random() * 100 + '%';
+      piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+      piece.style.animationDuration = (1.5 + Math.random() * 2) + 's';
+      piece.style.animationDelay = (Math.random() * 0.6) + 's';
+      piece.style.width = (4 + Math.random() * 5) + 'px';
+      piece.style.height = (4 + Math.random() * 5) + 'px';
+      piece.style.borderRadius = Math.random() > 0.5 ? '50%' : '1px';
+      confettiBox.appendChild(piece);
+    }
+
+    // Clean up after animation
+    setTimeout(() => { confettiBox.innerHTML = ''; }, 4000);
+  }
 
   // ══════════════════════════════════════════════════════════════════
   //  MODE SELECTION
@@ -82,6 +117,7 @@
     gameMode = 'pvp';
     btnModePvp.classList.add('active');
     btnModeAi.classList.remove('active');
+    toggleSlider.classList.remove('right');
     diffSection.classList.add('hidden');
   });
 
@@ -89,6 +125,7 @@
     gameMode = 'ai';
     btnModeAi.classList.add('active');
     btnModePvp.classList.remove('active');
+    toggleSlider.classList.add('right');
     diffSection.classList.remove('hidden');
   });
 
@@ -107,7 +144,7 @@
       labelX.textContent = 'You';
       labelO.textContent = 'AI';
       const labels = { easy: 'Easy', medium: 'Medium', hard: 'Hard' };
-      modeTag.textContent = 'vs AI / ' + labels[difficulty];
+      modeTag.textContent = 'AI / ' + labels[difficulty];
     } else {
       labelX.textContent = 'X';
       labelO.textContent = 'O';
@@ -115,10 +152,12 @@
     }
 
     scores = { x: 0, o: 0, draw: 0 };
+    roundNumber = 1;
     modeScreen.classList.add('hidden');
     gameScreen.classList.remove('hidden');
     resetBoard();
     renderScores();
+    updateRoundBadge();
   }
 
   btnChangeMode.addEventListener('click', () => {
@@ -238,21 +277,25 @@
 
   function renderBoard() {
     cells.forEach((cell, i) => {
-      cell.classList.remove(X, O, 'taken', 'winner');
+      cell.classList.remove(X, O, 'taken', 'winner', 'last-move');
+      const content = cell.querySelector('.cell-content');
       if (board[i] === X) {
-        cell.textContent = 'X';
+        content.textContent = 'X';
         cell.classList.add(X, 'taken');
       } else if (board[i] === O) {
-        cell.textContent = 'O';
+        content.textContent = 'O';
         cell.classList.add(O, 'taken');
       } else {
-        cell.textContent = '';
+        content.textContent = '';
+      }
+      if (i === lastMoveIdx && board[i] !== EMPTY) {
+        cell.classList.add('last-move');
       }
     });
   }
 
   function renderTurn() {
-    turnIndicator.classList.remove('x-turn', 'o-turn', 'ai-thinking');
+    turnIndicator.classList.remove('x-turn', 'o-turn', 'ai-thinking', 'switching');
 
     if (currentTurn === X) {
       turnIndicator.classList.add('x-turn');
@@ -269,14 +312,26 @@
       }
     }
 
+    moveCountEl.textContent = 'Move ' + (moveNumber + 1);
     scoreCardX.classList.toggle('active', currentTurn === X && !gameOver);
     scoreCardO.classList.toggle('active', currentTurn === O && !gameOver);
+  }
+
+  function animateScore(el) {
+    el.classList.remove('bump');
+    // Force reflow to restart animation
+    void el.offsetWidth;
+    el.classList.add('bump');
   }
 
   function renderScores() {
     scoreXEl.textContent    = scores.x;
     scoreOEl.textContent    = scores.o;
     scoreDrawEl.textContent = scores.draw;
+  }
+
+  function updateRoundBadge() {
+    roundBadge.textContent = 'Round ' + roundNumber;
   }
 
   function showWinLine(combo) {
@@ -298,24 +353,39 @@
   }
 
   function showResult(winner) {
-    const msg = gameMode === 'ai'
-      ? { x: { t: 'You win',    s: '',  c: 'x-win' },
-          o: { t: 'AI wins',    s: '',  c: 'o-win' },
-          draw: { t: 'Draw',    s: '',  c: 'draw'  } }
-      : { x: { t: 'X wins',    s: '',  c: 'x-win' },
-          o: { t: 'O wins',    s: '',  c: 'o-win' },
-          draw: { t: 'Draw',   s: '',  c: 'draw'  } };
+    const isAI = gameMode === 'ai';
+    const msg = {
+      x:    { t: isAI ? 'You win' : 'X wins',  s: isAI ? 'Well played' : '', mark: 'X', iconCls: 'x-icon', titleCls: 'x-win'  },
+      o:    { t: isAI ? 'AI wins' : 'O wins',   s: isAI ? 'Try again'  : '', mark: 'O', iconCls: 'o-icon', titleCls: 'o-win'  },
+      draw: { t: 'Draw',                         s: 'No winner',              mark: '=', iconCls: 'draw-icon', titleCls: 'draw' },
+    };
 
     const m = msg[winner];
     resultTitle.textContent = m.t;
-    resultTitle.className   = 'result-title ' + m.c;
+    resultTitle.className   = 'result-title ' + m.titleCls;
     resultSub.textContent   = m.s;
+    resultMark.textContent  = m.mark;
+    resultIcon.className    = 'result-icon ' + m.iconCls;
+    statMoves.textContent   = moveNumber;
+    statRound.textContent   = roundNumber;
+
+    // Confetti on win (not draw)
+    if (winner !== 'draw') {
+      spawnConfetti(winner === 'x' ? 'cyan' : 'rose');
+    }
 
     setTimeout(() => resultOverlay.classList.add('visible'), 500);
   }
 
   function hideResult() {
     resultOverlay.classList.remove('visible');
+  }
+
+  // ── Board entrance animation ──
+  function playBoardEntrance() {
+    gameBoard.classList.remove('entrance');
+    void gameBoard.offsetWidth;
+    gameBoard.classList.add('entrance');
   }
 
   // ══════════════════════════════════════════════════════════════════
@@ -330,6 +400,8 @@
       const winner = result.score === 10 ? X : O;
       scores[winner]++;
       renderScores();
+      animateScore(winner === X ? scoreXEl : scoreOEl);
+
       result.combo.forEach(i => cells[i].classList.add('winner'));
       if (winner === O) winLineSvg.classList.add('o-win');
       showWinLine(result.combo);
@@ -341,6 +413,7 @@
       gameOver = true;
       scores.draw++;
       renderScores();
+      animateScore(scoreDrawEl);
       showResult('draw');
       return true;
     }
@@ -350,7 +423,11 @@
 
   function switchTurn() {
     currentTurn = currentTurn === X ? O : X;
-    renderTurn();
+    turnIndicator.classList.add('switching');
+    setTimeout(() => {
+      renderTurn();
+      turnIndicator.classList.remove('switching');
+    }, 150);
   }
 
   function triggerAI() {
@@ -359,7 +436,7 @@
     gameBoard.classList.add('locked');
     renderTurn();
 
-    const delay = difficulty === 'hard' ? 420 : difficulty === 'medium' ? 300 : 200;
+    const delay = difficulty === 'hard' ? 450 : difficulty === 'medium' ? 320 : 220;
 
     setTimeout(() => {
       if (gameOver) { aiThinking = false; gameBoard.classList.remove('locked'); return; }
@@ -367,6 +444,8 @@
       if (move === -1) { aiThinking = false; gameBoard.classList.remove('locked'); return; }
 
       board[move] = currentTurn;
+      moveNumber++;
+      lastMoveIdx = move;
       renderBoard();
       aiThinking = false;
       gameBoard.classList.remove('locked');
@@ -375,6 +454,17 @@
     }, delay);
   }
 
+  // Track mouse position for ripple effect
+  cells.forEach(cell => {
+    cell.addEventListener('mousemove', (e) => {
+      const rect = cell.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width * 100).toFixed(0);
+      const y = ((e.clientY - rect.top) / rect.height * 100).toFixed(0);
+      cell.style.setProperty('--ripple-x', x + '%');
+      cell.style.setProperty('--ripple-y', y + '%');
+    });
+  });
+
   function handleCellClick(e) {
     if (gameOver || aiThinking) return;
     const idx = parseInt(e.currentTarget.dataset.index, 10);
@@ -382,6 +472,8 @@
     if (gameMode === 'ai' && currentTurn !== HUMAN) return;
 
     board[idx] = currentTurn;
+    moveNumber++;
+    lastMoveIdx = idx;
     renderBoard();
 
     if (checkEnd()) return;
@@ -395,15 +487,21 @@
     currentTurn = X;
     gameOver = false;
     aiThinking = false;
+    moveNumber = 0;
+    lastMoveIdx = -1;
     gameBoard.classList.remove('locked');
     hideResult();
     hideWinLine();
     renderBoard();
     renderTurn();
+    roundNumber++;
+    updateRoundBadge();
+    playBoardEntrance();
   }
 
   function resetScores() {
     scores = { x: 0, o: 0, draw: 0 };
+    roundNumber = 0;
     renderScores();
     resetBoard();
   }
